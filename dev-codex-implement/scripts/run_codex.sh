@@ -11,6 +11,10 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
+# Resolve the directory where this script lives, then derive the skill root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
+
 MODE="${1:-}"
 FEATURE="${2:-}"
 DATE_ARG="${3:-}"
@@ -144,7 +148,7 @@ $(cat "$TODO_FILE")
 
 $(printf '\n')
 
-$(cat .claude/skills/dev-codex-review-prd-todo/references/review-prompt-template.md)"
+$(cat "$(dirname "$SKILL_ROOT")/dev-codex-review-prd-todo/references/review-prompt-template.md")"
     codex exec --model "$MODEL" "$PROMPT" | tee "$REVIEW_FILE"
     echo "Review written to $REVIEW_FILE"
     ;;
@@ -163,7 +167,7 @@ $(cat "$TODO_FILE")
 
 $(printf '\n')
 
-$(cat .claude/skills/dev-codex-implement/references/implement-prompt-template.md)"
+$(cat "${SKILL_ROOT}/references/implement-prompt-template.md")"
     codex exec --json --model "$MODEL" "$PROMPT" | tee "$TMP_JSONL"
     SID="$(extract_session_id_from_jsonl "$TMP_JSONL")"
     rm -f "$TMP_JSONL"
@@ -185,7 +189,7 @@ $(cat .claude/skills/dev-codex-implement/references/implement-prompt-template.md
 
 $(printf '\n')
 
-$(cat .claude/skills/dev-codex-implement/references/fix-prompt-template.md)"
+$(cat "${SKILL_ROOT}/references/fix-prompt-template.md")"
     codex exec resume "$SID" "$PROMPT"
     ;;
 
