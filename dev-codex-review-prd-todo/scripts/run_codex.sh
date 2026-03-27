@@ -13,14 +13,13 @@ fi
 
 MODE="${1:-}"
 FEATURE="${2:-}"
+DATE_ARG="${3:-}"
 MODEL="${CODEX_MODEL:-gpt-5.4}"
 
 if [[ -z "$MODE" || -z "$FEATURE" ]]; then
-  echo "Usage: $0 <review|implement|fix> <feature-name>" >&2
+  echo "Usage: $0 <review|implement|fix> <feature-name> [YYYY-MM-DD]" >&2
   exit 1
 fi
-
-DATE_PREFIX="$(date '+%Y-%m-%d')"
 
 # Resolve directories: use docs/ if it exists, otherwise /tmp/claude-dev/<repo>/
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -35,14 +34,33 @@ else
   REVIEW_DIR="${FALLBACK_BASE}/review"
 fi
 
-PRD_FILE="${PRD_DIR}/${DATE_PREFIX}-${FEATURE}.md"
-TODO_FILE="${TODO_DIR}/${DATE_PREFIX}-${FEATURE}.md"
-REVIEW_FILE="${REVIEW_DIR}/${DATE_PREFIX}-${FEATURE}.md"
-
 mkdir -p "$PRD_DIR" "$TODO_DIR" "$REVIEW_DIR"
+
+# Resolve file paths: explicit date > glob search > today's date
+resolve_file() {
+  local dir="$1" feature="$2" date_arg="$3"
+  if [[ -n "$date_arg" ]]; then
+    echo "${dir}/${date_arg}-${feature}.md"
+    return
+  fi
+  # Search for *-<feature>.md, pick the latest (sorted last)
+  local found
+  found="$(ls -1 "${dir}/"*"-${feature}.md" 2>/dev/null | sort | tail -1)"
+  if [[ -n "$found" ]]; then
+    echo "$found"
+    return
+  fi
+  # Fallback to today's date
+  echo "${dir}/$(date '+%Y-%m-%d')-${feature}.md"
+}
+
+PRD_FILE="$(resolve_file "$PRD_DIR" "$FEATURE" "$DATE_ARG")"
+TODO_FILE="$(resolve_file "$TODO_DIR" "$FEATURE" "$DATE_ARG")"
+REVIEW_FILE="$(resolve_file "$REVIEW_DIR" "$FEATURE" "$DATE_ARG")"
 
 if [[ ! -f "$TODO_FILE" ]]; then
   echo "Missing TODO file: $TODO_FILE" >&2
+  echo "Searched in: ${TODO_DIR}/*-${FEATURE}.md" >&2
   exit 1
 fi
 

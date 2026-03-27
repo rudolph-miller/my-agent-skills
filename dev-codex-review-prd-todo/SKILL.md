@@ -4,7 +4,7 @@ description: Codex に PRD と Todo のレビューを依頼する
 user-invocable: false
 disable-model-invocation: false
 allowed-tools: Bash, Read, Write
-argument-hint: "<feature-name>"
+argument-hint: "<feature-name> [YYYY-MM-DD]"
 ---
 
 # Purpose
@@ -20,6 +20,6 @@ PRD と Todo を入力として Codex にレビューを依頼する。
 
 # Instructions
 
-1. Bash で `scripts/run_codex.sh review <feature-name>` を実行する
+1. Bash で `scripts/run_codex.sh review <feature-name> [YYYY-MM-DD]` を実行する（日付省略時は feature 名で自動検索し最新を使う）
 2. 出力は Review ディレクトリ（Path Resolution ルールで決定）に保存される
 3. Claude はその結果を読んで、PRD / Todo の修正点を整理する
