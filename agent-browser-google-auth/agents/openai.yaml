@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Browser Google Auth"
+  short_description: "localhost:3000のGoogle認証を復元してブラウザ検証"
+  default_prompt: "Use $agent-browser-google-auth to restore Google auth state and run browser tests on localhost:3000."
