@@ -31,7 +31,7 @@ PRD と Todo ファイルを橋渡しにして開発を進める。
 2. `dev-codex-review-prd-todo` を呼び出して Codex にレビューさせる
 3. Claude がレビューを反映して PRD / Todo を手直しする
 4. `dev-codex-review-prd-todo` の指摘がなくなるまでレビューの反映と `dev-codex-review-prd-todo` でのレビューを繰り返す
-5. 必要なら人間確認を取る
+5. 確定した PRD のサマリー（目的・スコープ・主要な設計判断）を人間に報告し、実装開始の確認を取る
 6. `dev-codex-implement` を `implement` モードで呼び出して実装させる
 7. `dev-verify` を呼び出して検証する
 8. 修正が必要なら `dev-codex-implement` を `fix` モードで呼び出す
