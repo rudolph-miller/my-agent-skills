@@ -15,6 +15,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
 
+AUTH_ERROR_PATTERNS='Refresh token is invalid|TokenRefreshFailed|invalid_grant'
+
 MODE="${1:-}"
 FEATURE="${2:-}"
 shift 2 2>/dev/null || true
@@ -268,7 +270,36 @@ PY
 run_codex_exec() {
   local prompt="$1"
   shift || true
-  codex exec --full-auto --model "$MODEL" "$@" "$prompt"
+  local log_file pid status=0 auth_failed=0
+  log_file="$(mktemp)"
+
+  codex exec --full-auto --model "$MODEL" "$@" "$prompt" \
+    > >(tee -a "$log_file") \
+    2> >(tee -a "$log_file" >&2) &
+  pid=$!
+
+  while kill -0 "$pid" >/dev/null 2>&1; do
+    if grep -Eiq "$AUTH_ERROR_PATTERNS" "$log_file"; then
+      auth_failed=1
+      echo "Codex authentication failed. Re-run after refreshing Codex login." >&2
+      kill "$pid" >/dev/null 2>&1 || true
+      break
+    fi
+    sleep 1
+  done
+
+  set +e
+  wait "$pid"
+  status=$?
+  set -e
+
+  if (( auth_failed )) || grep -Eiq "$AUTH_ERROR_PATTERNS" "$log_file"; then
+    rm -f "$log_file"
+    return 86
+  fi
+
+  rm -f "$log_file"
+  return "$status"
 }
 
 case "$MODE" in

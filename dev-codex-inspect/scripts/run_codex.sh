@@ -14,6 +14,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
 
+AUTH_ERROR_PATTERNS='Refresh token is invalid|TokenRefreshFailed|invalid_grant'
+
 MODE="${1:-}"
 FEATURE="${2:-}"
 DATE_ARG="${3:-}"
@@ -71,5 +73,38 @@ $(printf '\n')
 
 $(cat "${SKILL_ROOT}/references/inspect-template.md")"
 
-codex exec --full-auto --model "$MODEL" --output-last-message "$REPORT_FILE" "$PROMPT"
+run_codex_exec() {
+  local log_file pid status=0 auth_failed=0
+  log_file="$(mktemp)"
+
+  codex exec --full-auto --model "$MODEL" --output-last-message "$REPORT_FILE" "$PROMPT" \
+    > >(tee -a "$log_file") \
+    2> >(tee -a "$log_file" >&2) &
+  pid=$!
+
+  while kill -0 "$pid" >/dev/null 2>&1; do
+    if grep -Eiq "$AUTH_ERROR_PATTERNS" "$log_file"; then
+      auth_failed=1
+      echo "Codex authentication failed. Re-run after refreshing Codex login." >&2
+      kill "$pid" >/dev/null 2>&1 || true
+      break
+    fi
+    sleep 1
+  done
+
+  set +e
+  wait "$pid"
+  status=$?
+  set -e
+
+  if (( auth_failed )) || grep -Eiq "$AUTH_ERROR_PATTERNS" "$log_file"; then
+    rm -f "$log_file"
+    return 86
+  fi
+
+  rm -f "$log_file"
+  return "$status"
+}
+
+run_codex_exec
 echo "Inspect report written to $REPORT_FILE"
