@@ -26,19 +26,21 @@ if [[ "$MODE" != "review" || -z "$FEATURE" ]]; then
 fi
 
 # Resolve directories: use docs/ if it exists, otherwise /tmp/claude-dev/<repo>/
+# Review output always goes to tmp/ to avoid bloating git history
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+ORIGINAL_REPO_NAME="$(basename "$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/\.git.*||')")"
+TMP_DIR="${REPO_ROOT}/tmp"
 if [[ -d "${REPO_ROOT}/docs/prd" || -d "${REPO_ROOT}/docs/todo" ]]; then
   PRD_DIR="docs/prd"
   TODO_DIR="docs/todo"
   PROPOSAL_DIR="docs/proposal"
-  REVIEW_DIR="docs/review"
 else
-  FALLBACK_BASE="/tmp/claude-dev/$(basename "$REPO_ROOT")"
+  FALLBACK_BASE="/tmp/claude-dev/${ORIGINAL_REPO_NAME}"
   PRD_DIR="${FALLBACK_BASE}/prd"
   TODO_DIR="${FALLBACK_BASE}/todo"
   PROPOSAL_DIR="${FALLBACK_BASE}/proposal"
-  REVIEW_DIR="${FALLBACK_BASE}/review"
 fi
+REVIEW_DIR="${TMP_DIR}/review"
 
 mkdir -p "$PRD_DIR" "$TODO_DIR" "$PROPOSAL_DIR" "$REVIEW_DIR"
 
@@ -97,5 +99,5 @@ $(cat "$PROPOSAL_FILE")
 
 $(cat "${SKILL_ROOT}/references/review-prompt-template.md")"
 
-codex exec --model "$MODEL" "$PROMPT" | tee "$REVIEW_FILE"
+codex exec --full-auto --model "$MODEL" "$PROMPT" | tee "$REVIEW_FILE"
 echo "Review written to $REVIEW_FILE"

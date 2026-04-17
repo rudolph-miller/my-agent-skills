@@ -17,26 +17,47 @@ SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
 
 MODE="${1:-}"
 FEATURE="${2:-}"
-DATE_ARG="${3:-}"
+shift 2 2>/dev/null || true
+
+DATE_ARG=""
+GROUP=""
 MODEL="${CODEX_MODEL:-gpt-5.4}"
 
+# Parse remaining args: [YYYY-MM-DD] [--group <name>]
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --group)
+      GROUP="${2:-}"
+      shift 2
+      ;;
+    *)
+      DATE_ARG="$1"
+      shift
+      ;;
+  esac
+done
+
 if [[ -z "$MODE" || -z "$FEATURE" ]]; then
-  echo "Usage: $0 <review|implement|fix> <feature-name> [YYYY-MM-DD]" >&2
+  echo "Usage: $0 <review|implement|fix> <feature-name> [YYYY-MM-DD] [--group <group>]" >&2
   exit 1
 fi
 
 # Resolve directories: use docs/ if it exists, otherwise /tmp/claude-dev/<repo>/
+# Review output always goes to tmp/ to avoid bloating git history
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+# In a worktree, --git-common-dir points to the original repo's .git,
+# so we derive the stable repo name from it (avoids worktree dir name mismatch).
+ORIGINAL_REPO_NAME="$(basename "$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/\.git.*||')")"
+TMP_DIR="${REPO_ROOT}/tmp"
 if [[ -d "${REPO_ROOT}/docs/prd" || -d "${REPO_ROOT}/docs/todo" ]]; then
   PRD_DIR="docs/prd"
   TODO_DIR="docs/todo"
-  REVIEW_DIR="docs/review"
 else
-  FALLBACK_BASE="/tmp/claude-dev/$(basename "$REPO_ROOT")"
+  FALLBACK_BASE="/tmp/claude-dev/${ORIGINAL_REPO_NAME}"
   PRD_DIR="${FALLBACK_BASE}/prd"
   TODO_DIR="${FALLBACK_BASE}/todo"
-  REVIEW_DIR="${FALLBACK_BASE}/review"
 fi
+REVIEW_DIR="${TMP_DIR}/review"
 
 mkdir -p "$PRD_DIR" "$TODO_DIR" "$REVIEW_DIR"
 
@@ -68,36 +89,146 @@ if [[ ! -f "$TODO_FILE" ]]; then
   exit 1
 fi
 
-get_session_id() {
-  python3 - "$TODO_FILE" <<'PY'
+# Extract the content for a specific group from the Todo file.
+# If no group is specified, return the full content (minus frontmatter).
+extract_group_content() {
+  local todo_file="$1" group="$2"
+  python3 - "$todo_file" "$group" <<'PY'
 import re, sys
-path = sys.argv[1]
+
+path, group = sys.argv[1], sys.argv[2]
 text = open(path, encoding="utf-8").read()
-m = re.search(r'^codex_session_id:\s*(.+?)\s*$', text, re.M)
-print(m.group(1).strip() if m else "")
+
+# Strip frontmatter
+body = text
+if body.startswith('---\n'):
+    end = body.find('\n---', 4)
+    if end != -1:
+        body = body[end+4:].lstrip('\n')
+
+if not group:
+    print(body)
+    sys.exit(0)
+
+# Extract the section for the given group
+pattern = rf'^## Group:\s*{re.escape(group)}\s*$'
+lines = body.split('\n')
+collecting = False
+result = []
+for line in lines:
+    if re.match(r'^## Group:\s*', line):
+        if re.match(pattern, line):
+            collecting = True
+            result.append(line)
+        else:
+            collecting = False
+    elif re.match(r'^## ', line) and not re.match(r'^## Group:', line):
+        # Non-group H2 (e.g. ## Notes) — stop collecting
+        collecting = False
+    elif collecting:
+        result.append(line)
+
+if not result:
+    print(f"Error: Group '{group}' not found in {path}", file=sys.stderr)
+    sys.exit(1)
+
+print('\n'.join(result))
 PY
 }
 
-save_session_id() {
-  local session_id="$1"
-  python3 - "$TODO_FILE" "$session_id" <<'PY'
+# List all group names from the Todo file
+list_groups() {
+  local todo_file="$1"
+  python3 - "$todo_file" <<'PY'
 import re, sys
-path, sid = sys.argv[1], sys.argv[2]
+path = sys.argv[1]
 text = open(path, encoding="utf-8").read()
-if text.startswith('---\n'):
-    end = text.find('\n---', 4)
-    if end != -1:
-        fm = text[4:end]
-        body = text[end+4:]
-        if re.search(r'(?m)^codex_session_id:', fm):
-            fm = re.sub(r'(?m)^codex_session_id:.*$', f'codex_session_id: {sid}', fm)
-        else:
-            fm = fm.rstrip() + f'\ncodex_session_id: {sid}\n'
-        out = f'---\n{fm}---{body}'
-    else:
-        out = f'---\ncodex_session_id: {sid}\n---\n\n' + text
+groups = re.findall(r'^## Group:\s*(.+?)\s*$', text, re.M)
+for g in groups:
+    print(g)
+PY
+}
+
+# Get session id for a specific group (or the single session id for backward compat)
+get_session_id() {
+  local group="${1:-}"
+  python3 - "$TODO_FILE" "$group" <<'PY'
+import re, sys, json
+
+path, group = sys.argv[1], sys.argv[2]
+text = open(path, encoding="utf-8").read()
+
+# Try codex_session_ids (new format: YAML-ish JSON map)
+m = re.search(r'^codex_session_ids:\s*(.+?)$', text, re.M)
+if m:
+    raw = m.group(1).strip()
+    if raw and raw != '{}':
+        try:
+            ids = json.loads(raw.replace("'", '"'))
+            if group and group in ids:
+                print(ids[group])
+                sys.exit(0)
+            elif not group and len(ids) == 1:
+                print(list(ids.values())[0])
+                sys.exit(0)
+        except Exception:
+            pass
+
+# Fallback: try old codex_session_id (single value)
+m = re.search(r'^codex_session_id:\s*(.+?)\s*$', text, re.M)
+if m and m.group(1).strip():
+    print(m.group(1).strip())
 else:
-    out = f'---\ncodex_session_id: {sid}\n---\n\n' + text
+    print("")
+PY
+}
+
+# Save session id for a specific group
+save_session_id() {
+  local session_id="$1" group="${2:-}"
+  python3 - "$TODO_FILE" "$session_id" "$group" <<'PY'
+import re, sys, json
+
+path, sid, group = sys.argv[1], sys.argv[2], sys.argv[3]
+text = open(path, encoding="utf-8").read()
+
+if not text.startswith('---\n'):
+    text = '---\ncodex_session_ids: {}\n---\n\n' + text
+
+end = text.find('\n---', 4)
+if end == -1:
+    text = '---\ncodex_session_ids: {}\n---\n\n' + text
+    end = text.find('\n---', 4)
+
+fm = text[4:end]
+body = text[end+4:]
+
+# Parse existing codex_session_ids
+m = re.search(r'^codex_session_ids:\s*(.+?)$', fm, re.M)
+ids = {}
+if m:
+    raw = m.group(1).strip()
+    if raw and raw != '{}':
+        try:
+            ids = json.loads(raw.replace("'", '"'))
+        except Exception:
+            ids = {}
+
+# Update the map
+key = group if group else "default"
+ids[key] = sid
+
+ids_json = json.dumps(ids, ensure_ascii=False)
+
+if m:
+    fm = re.sub(r'^codex_session_ids:\s*.+?$', f'codex_session_ids: {ids_json}', fm, flags=re.M)
+else:
+    fm = fm.rstrip() + f'\ncodex_session_ids: {ids_json}\n'
+
+# Remove old codex_session_id if present
+fm = re.sub(r'\n?codex_session_id:.*\n?', '\n', fm)
+
+out = f'---\n{fm.strip()}\n---{body}'
 with open(path, 'w', encoding='utf-8') as f:
     f.write(out)
 PY
@@ -134,6 +265,12 @@ print(sid)
 PY
 }
 
+run_codex_exec() {
+  local prompt="$1"
+  shift || true
+  codex exec --full-auto --model "$MODEL" "$@" "$prompt"
+}
+
 case "$MODE" in
   review)
     if [[ ! -f "$PRD_FILE" ]]; then
@@ -148,8 +285,8 @@ $(cat "$TODO_FILE")
 
 $(printf '\n')
 
-$(cat "$(dirname "$SKILL_ROOT")/dev-codex-review-prd-todo/references/review-prompt-template.md")"
-    codex exec --model "$MODEL" "$PROMPT" | tee "$REVIEW_FILE"
+$(cat "$(dirname "$SKILL_ROOT")/dev-codex-plan/references/review-prompt-template.md")"
+    run_codex_exec "$PROMPT" | tee "$REVIEW_FILE"
     echo "Review written to $REVIEW_FILE"
     ;;
 
@@ -159,33 +296,35 @@ $(cat "$(dirname "$SKILL_ROOT")/dev-codex-review-prd-todo/references/review-prom
       exit 1
     fi
     TMP_JSONL="$(mktemp)"
+    TODO_CONTENT="$(extract_group_content "$TODO_FILE" "$GROUP")"
     PROMPT="$(cat "$PRD_FILE")
 
 $(printf '\n')
 
-$(cat "$TODO_FILE")
+${TODO_CONTENT}
 
 $(printf '\n')
 
 $(cat "${SKILL_ROOT}/references/implement-prompt-template.md")"
-    codex exec --json --model "$MODEL" "$PROMPT" | tee "$TMP_JSONL"
+    run_codex_exec "$PROMPT" --json | tee "$TMP_JSONL"
     SID="$(extract_session_id_from_jsonl "$TMP_JSONL")"
     rm -f "$TMP_JSONL"
     if [[ -n "$SID" ]]; then
-      save_session_id "$SID"
-      echo "Saved codex_session_id=$SID to $TODO_FILE"
+      save_session_id "$SID" "$GROUP"
+      echo "Saved codex_session_id=$SID (group=${GROUP:-default}) to $TODO_FILE"
     else
       echo "Warning: could not extract session id from codex output." >&2
     fi
     ;;
 
   fix)
-    SID="$(get_session_id)"
+    SID="$(get_session_id "$GROUP")"
     if [[ -z "$SID" ]]; then
-      echo "No codex_session_id found in $TODO_FILE" >&2
+      echo "No codex_session_id found in $TODO_FILE (group=${GROUP:-default})" >&2
       exit 1
     fi
-    PROMPT="$(cat "$TODO_FILE")
+    TODO_CONTENT="$(extract_group_content "$TODO_FILE" "$GROUP")"
+    PROMPT="${TODO_CONTENT}
 
 $(printf '\n')
 
@@ -193,9 +332,13 @@ $(cat "${SKILL_ROOT}/references/fix-prompt-template.md")"
     codex exec resume "$SID" "$PROMPT"
     ;;
 
+  list-groups)
+    list_groups "$TODO_FILE"
+    ;;
+
   *)
     echo "Unknown mode: $MODE" >&2
-    echo "Usage: $0 <review|implement|fix> <feature-name>" >&2
+    echo "Usage: $0 <review|implement|fix|list-groups> <feature-name> [YYYY-MM-DD] [--group <group>]" >&2
     exit 1
     ;;
 esac

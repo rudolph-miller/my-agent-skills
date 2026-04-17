@@ -1,11 +1,13 @@
 # Report
 
-## Summary
+## 何のためにやったか
 
-## Done
+## 何を行ったか
 
-## Remaining
+## 完了したこと
 
-## Risks
+## 残課題
 
-## Human Check Needed
+## リスク
+
+## 人間に確認してほしいこと
