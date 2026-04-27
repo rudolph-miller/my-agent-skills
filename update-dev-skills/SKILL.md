@@ -1,115 +1,148 @@
 ---
 name: update-dev-skills
-description: dev フロー関連スキル (dev, dev-codex-inspect, dev-codex-plan, dev-codex-implement, dev-next-action, dev-verify) を、登録済みの全サイトに対して同一内容で同期更新する。「dev スキルを更新したい」「dev フローのルールを変えたい」などと言われたときに使う。
-user-invocable: true
-disable-model-invocation: false
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+description: Codex用のdev開発フローと関連するグローバル指示を更新する。devスキル、devフロー、inspect/plan/review/worktree並列実装/merge/verify、または旧Claude Code devスキルのCodex移植を変更したいときに使う。
+metadata:
+  short-description: Codex devフロー更新
 ---
 
-# Purpose
+# Update Dev Skills
 
-dev フロー関連スキル群を、登録済みの全サイトに対して **同一内容で** 同期更新する。
+## 目的
 
-dev スキルは複数の場所にミラー配置されている。各サイトを毎回手で指定するのは面倒・抜けが起きるので、このスキルで一括更新する。サイト間で内容差分は許容しない（完全ミラー）。
+Codex-only の `dev` 開発フローを、スキル本体・グローバル指示・永続Noteの整合性を保ちながら更新する。
 
-# Target sites
+現在の前提:
 
-以下の 5 サイトを対象とする。新しいミラーが増えたらここに追記する。
+- Codex を唯一の入口にする
+- 開発入口は `dev` スキルに統一する
+- 役割は Orchestrator / Inspector / Planner / Reviewer / Worker / Verifier に分ける
+- 標準フローは `inspect -> PRD/Todo -> review -> worktree実装 -> merge -> verify`
+- チャット、報告、PRD、Todo、review、verify 成果物は原則日本語で作成する
 
+## 主な更新対象
+
+`dev` フローを変えるときは、必要に応じて次を一緒に更新する。`~/.codex/skills` を master とし、Codex版の active skill を各ミラーへ同期する。
+
+```text
+~/.codex/skills/dev/SKILL.md
+~/.codex/skills/update-dev-skills/SKILL.md
+~/.codex/AGENTS.md
+~/projects/myNote/04_Resources/Memos/ClaudeとCodexの開発スタイル方針.md
 ```
-~/.claude/skills
-~/.agents/skills
+
+方針Noteは過去版を消さない。大きな変更では dated section を追加し、小さな補足では最新セクションに追記する。
+
+## Codex版スキルの同期先
+
+Codex版の active skill は、次の場所に同一内容で配置する。
+
+```text
+~/.codex/skills
 ~/projects/my-agent-skills
 ~/projects/ichi.social/ichi-social-frontend/.claude/skills
 ~/projects/ichi.social/ichi-social-frontend/.agents/skills
 ```
 
-各サイト配下の `dev*` ディレクトリのうち、現行フローで使用する
-`dev`, `dev-codex-inspect`, `dev-codex-plan`, `dev-codex-implement`, `dev-next-action`, `dev-verify`
-が同期対象。旧 wrapper は削除済みとみなし、復活させない。
+同期対象:
 
-# Target files
-
-dev フローの説明は skill だけでなく Claude のグローバル設定にも存在する。
-そのため、以下のファイルも **補助的な同期対象** として扱う。
-
-```
-~/.claude/CLAUDE.md
+```text
+dev
+update-dev-skills
 ```
 
-これは 5 サイトにミラーされるファイルではないが、dev フローの入口判断に直接効くため、
-`dev` / `dev-codex-inspect` / `dev-codex-plan` などの責務や分岐を変えたときは必ず同時に更新する。
+`~/.codex/skills` を master として、各 skill ディレクトリ単位で同期する。`skills/` root 全体に `--delete` をかけない。
 
-# Workflow
+同期後、次の repo では必ず commit する。
 
-## Step 1: Drift check (必須・最初に実行)
+```text
+~/projects/my-agent-skills
+~/projects/ichi.social/ichi-social-frontend
+```
 
-各サイトを比較し、現状のドリフトを把握する。
+## 旧 Claude Code 由来の参照元
 
-1. 各サイトに存在する `dev*` ディレクトリ一覧を取得 (`ls -1 <site> | grep '^dev'`)
-2. サイト間でディレクトリ集合が一致するか確認
-3. 一致しないディレクトリがあれば **欠落・余剰** を列挙して人間に報告
-4. 各 `dev*` ディレクトリについて、サイト間でファイル内容が一致するか `diff -rq` で確認
-5. ドリフトがあれば **どのサイトが master か** を人間に確認する（自動判定しない）
+旧 Claude Code dev 系スキルは `_archive/` に退避されている場合がある。
 
-ドリフトを見つけたら **解消方針を人間に確認してから** Step 2 に進む。勝手に上書きしない。
+```text
+~/projects/my-agent-skills/_archive/
+~/projects/ichi.social/ichi-social-frontend/.claude/skills/_archive/
+~/projects/ichi.social/ichi-social-frontend/.agents/skills/_archive/
+```
 
-## Step 2: Master の決定
+これらは参照専用。ユーザーが明示しない限り、旧 multi-skill の Claude + Codex フローを復活させない。
 
-人間から master サイトの指定を受ける。デフォルト master は `~/projects/my-agent-skills`（agent skills のソースリポジトリ。他サイトはここからの派生ミラー）。ただし更新内容によっては別サイトに最新版がある可能性があるので、毎回確認する。
+## 更新手順
 
-## Step 3: 更新内容の適用
+1. **現状確認**
+   - `~/.codex/skills/dev/SKILL.md` を読む
+   - `~/.codex/skills/update-dev-skills/SKILL.md` を読む
+   - `~/.codex/AGENTS.md` の `dev` 関連セクションを読む
+   - 方針Noteの最新 dated section を読む
+   - 旧 Claude の挙動に関係する依頼なら、該当する `_archive/` スキルを参照する
 
-ユーザーから指示された変更内容を **master サイト** に対してまず適用する。
+2. **変更種別の分類**
+   - Skill-only: `dev/SKILL.md` だけに入れるべき手順
+   - Global rule: 全プロジェクトに効くため `~/.codex/AGENTS.md` に入れるべきルール
+   - Durable policy: 方針として残すため Note に書くべき判断
+   - Reference-only: 旧 Claude 由来の文脈として見るが、標準フローには戻さない内容
 
-- ファイル新規作成 → master に Write
-- 既存ファイル編集 → master に Edit
-- ファイル削除 → master で `rm`（人間に確認してから）
-- 新規スキルディレクトリ追加 → master に作成
+3. **編集**
+   - `dev/SKILL.md` は簡潔で手順的に保つ
+   - `AGENTS.md` はデフォルト行動とルールに絞る
+   - Note は判断理由が後から読めるように書く
+   - 旧 Claude 前提は Codex 前提に置き換える
+   - 用語は Codex Orchestrator / Inspector / Planner / Reviewer / Worker / Verifier を優先する
+   - PRD / Todo / review / verify 成果物が日本語になるよう、言語ルールを崩さない
 
-master に適用後、内容を Read で確認してから Step 4 へ。
+4. **検証**
+   - スキルバリデーションを実行する
 
-dev フローの入口条件・分岐条件・役割分担を変えた場合は、このステップで `~/.claude/CLAUDE.md`
-も同時に更新する。特に以下の変更は反映漏れを許容しない。
+```bash
+python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/.codex/skills/dev
+python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/.codex/skills/update-dev-skills
+```
 
-- `dev` の適用条件
-- `dev-codex-inspect` の追加・削除
-- `inspect-only` / `inspect-then-plan` / `plan-direct` の分岐
-- Claude と Codex の責務変更
+   - 変更箇所を読み返す
+   - 旧 Claude Code フローを誤って復活させていないか確認する
 
-## Step 4: 全サイトへ伝播
+5. **ミラー同期**
+   - `~/.codex/skills/dev/` を各同期先の `dev/` へ同期する
+   - `~/.codex/skills/update-dev-skills/` を各同期先の `update-dev-skills/` へ同期する
+   - `rsync --delete` を使う場合は、必ず skill ディレクトリ単位に限定する
+   - 同期後に `my-agent-skills` と `ichi-social-frontend` の差分を確認する
 
-master の `dev*` ディレクトリを残り 4 サイトに同期する。
+6. **commit**
+   - `~/projects/my-agent-skills` で同期差分を commit する
+   - `~/projects/ichi.social/ichi-social-frontend` で同期差分を commit する
+   - commit 前に `git status --short` を確認し、dev skill 同期以外の差分が混ざる場合は報告する
 
-- 安全なやり方: `rsync -av --delete <master>/dev<X>/ <site>/dev<X>/` を **対象スキルディレクトリ単位で** 実行する
-- `--delete` を使うので、対象は必ず1スキル単位 (`dev-codex-plan/` など) に絞る。サイトのトップ (`skills/`) 全体に `--delete` をかけない。
-- スキル新規作成のときは事前に `mkdir -p <site>/<new-skill>` してから rsync
-- 削除のときは各サイトでも対応するディレクトリを削除
+7. **報告**
+   - 変更したファイル
+   - バリデーション結果
+   - ミラー同期先
+   - commit hash
+   - 参照した archive の有無
+   - 残課題があれば明記する
 
-## Step 5: 検証
+## 移植ルール
 
-伝播後、以下を確認する:
+- `Claude` が orchestrator になる記述は `Codex Orchestrator` に置き換える
+- `dev-codex-*` サブスキルは原則 `dev` 内の役割に吸収する
+- 明確な理由がある場合だけ、別の Codex スキルとして分離する
+- inspect note、PRD、Todo、review note、verify note による成果物ハンドオフを維持する
+- worktree による並列実装を維持する
+- 明示的に worktree を作る場合は repo-local を優先する
 
-1. 全サイトで現行スキル集合 (`dev`, `dev-codex-inspect`, `dev-codex-plan`, `dev-codex-implement`, `dev-next-action`, `dev-verify`) が一致する
-2. master と各サイトで `diff -rq <master>/<skill> <site>/<skill>` が無差分
-3. `~/.claude/CLAUDE.md` に最新の dev フロー分岐と役割分担が反映されている
-4. 差分が残っているサイトがあれば原因調査して再同期
+```text
+<repo>/.codex/worktrees/<task-slug>/<group-name>
+```
 
-## Step 6: 人間に報告
+- `~/.codex/worktrees/{hash}/{repo}` は runtime 管理の場所として扱い、明示作成時の推奨先にはしない
+- 旧 Claude Code dev 系スキルは `_archive/` に残し、active な Codex版 `dev` / `update-dev-skills` とは混ぜない
 
-以下を簡潔にまとめて報告:
+## 安全ルール
 
-- 変更したスキル名と変更概要
-- 適用先サイト一覧（5 サイト）と各サイトの結果 (OK / NG)
-- Step 1 で見つけたドリフトの解消結果
-- 残課題があれば明記
-
-# Rules
-
-- **完全ミラー前提**: サイト間で内容差分は許容しない。site-specific なルールが必要になった場合は、このスキルの設計を見直してから対応する（勝手に分岐させない）。
-- **drift を発見したら必ず人間に報告**: 自動で master を決めて上書きしない。古いほうを master にしてしまうと最新の更新を消す事故になる。
-- **`--delete` の使用範囲**: 必ずスキル1個 (`dev-codex-plan/` 等) に絞る。`skills/` 全体に `--delete` をかけない（他のスキルを巻き込む）。
-- **旧 wrapper の扱い**: 旧構成の wrapper は削除済みとして扱い、以後同期対象に含めない。
-- **削除操作は人間確認必須**: ファイル・スキルディレクトリの削除は、master 側でも各サイト側でも、必ず人間に確認してから実行する。
-- **target sites の追加**: 新しいミラー先が増えたら、このファイルの "Target sites" セクションを更新する。
-- **`~/.claude/CLAUDE.md` は別系統で維持**: ミラー対象ではないが、dev フロー変更時は必ず一緒に更新・確認する。
+- ユーザーが明示しない限り `_archive/` は削除しない
+- skills root 全体に `rsync --delete` をかけない
+- グローバル指示は、現在の内容を読んでから編集する
+- 対象 repo に未コミット変更がある場合は保持し、報告する

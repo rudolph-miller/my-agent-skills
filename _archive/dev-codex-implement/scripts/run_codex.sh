@@ -23,7 +23,8 @@ shift 2 2>/dev/null || true
 
 DATE_ARG=""
 GROUP=""
-MODEL="${CODEX_MODEL:-gpt-5.4}"
+MODEL="${CODEX_MODEL:-gpt-5.5}"
+REASONING_EFFORT="${CODEX_REASONING_EFFORT:-high}"
 
 # Parse remaining args: [YYYY-MM-DD] [--group <name>]
 while [[ $# -gt 0 ]]; do
@@ -273,7 +274,7 @@ run_codex_exec() {
   local log_file pid status=0 auth_failed=0
   log_file="$(mktemp)"
 
-  codex exec --full-auto --model "$MODEL" "$@" "$prompt" \
+  codex exec --full-auto --model "$MODEL" -c model_reasoning_effort="$REASONING_EFFORT" "$@" "$prompt" \
     > >(tee -a "$log_file") \
     2> >(tee -a "$log_file" >&2) &
   pid=$!
@@ -360,7 +361,7 @@ $(cat "${SKILL_ROOT}/references/implement-prompt-template.md")"
 $(printf '\n')
 
 $(cat "${SKILL_ROOT}/references/fix-prompt-template.md")"
-    codex exec resume "$SID" "$PROMPT"
+    codex exec resume --model "$MODEL" -c model_reasoning_effort="$REASONING_EFFORT" "$SID" "$PROMPT"
     ;;
 
   list-groups)

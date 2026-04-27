@@ -19,7 +19,8 @@ AUTH_ERROR_PATTERNS='Refresh token is invalid|TokenRefreshFailed|invalid_grant'
 MODE="${1:-}"
 FEATURE="${2:-}"
 DATE_ARG="${3:-}"
-MODEL="${CODEX_MODEL:-gpt-5.4}"
+MODEL="${CODEX_MODEL:-gpt-5.5}"
+REASONING_EFFORT="${CODEX_REASONING_EFFORT:-high}"
 
 if [[ "$MODE" != "inspect" || -z "$FEATURE" ]]; then
   echo "Usage: $0 inspect <feature-name> [YYYY-MM-DD]" >&2
@@ -27,7 +28,7 @@ if [[ "$MODE" != "inspect" || -z "$FEATURE" ]]; then
 fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-ORIGINAL_REPO_NAME="$(basename "$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/\\.git.*||')")"
+ORIGINAL_REPO_NAME="$(basename "$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/\.git.*||')")"
 
 if [[ -d "${REPO_ROOT}/docs/inspect-request" || -d "${REPO_ROOT}/docs/inspect" ]]; then
   REQUEST_DIR="docs/inspect-request"
@@ -77,7 +78,7 @@ run_codex_exec() {
   local log_file pid status=0 auth_failed=0
   log_file="$(mktemp)"
 
-  codex exec --full-auto --model "$MODEL" --output-last-message "$REPORT_FILE" "$PROMPT" \
+  codex exec --full-auto --model "$MODEL" -c model_reasoning_effort="$REASONING_EFFORT" --output-last-message "$REPORT_FILE" "$PROMPT" \
     > >(tee -a "$log_file") \
     2> >(tee -a "$log_file" >&2) &
   pid=$!

@@ -20,7 +20,8 @@ AUTH_ERROR_PATTERNS='Refresh token is invalid|TokenRefreshFailed|invalid_grant'
 MODE="${1:-}"
 FEATURE="${2:-}"
 DATE_ARG="${3:-}"
-MODEL="${CODEX_MODEL:-gpt-5.4}"
+MODEL="${CODEX_MODEL:-gpt-5.5}"
+REASONING_EFFORT="${CODEX_REASONING_EFFORT:-high}"
 
 if [[ "$MODE" != "review" || -z "$FEATURE" ]]; then
   echo "Usage: $0 review <feature-name> [YYYY-MM-DD]" >&2
@@ -105,7 +106,7 @@ run_codex_exec() {
   local log_file pid status=0 auth_failed=0
   log_file="$(mktemp)"
 
-  codex exec --full-auto --model "$MODEL" "$PROMPT" \
+  codex exec --full-auto --model "$MODEL" -c model_reasoning_effort="$REASONING_EFFORT" "$PROMPT" \
     > >(tee -a "$log_file") \
     2> >(tee -a "$log_file" >&2) &
   pid=$!
