@@ -143,6 +143,7 @@ python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/project
 ## 安全ルール
 
 - ユーザーが明示しない限り `_archive/` は削除しない
+- **`_archive/` を走査対象のスキルルート配下（`~/.agents/skills` やリポジトリの `.agents/skills` / `.claude/skills`）に置かない**。スキル名は frontmatter の `name` で決まるため、アーカイブしてもロードされて名前衝突（暗黙呼び出しの曖昧化）が再発する。アーカイブは git リポジトリ（`~/projects/my-agent-skills/_archive`）か走査外のディレクトリに置く
 - skills root 全体に `rsync --delete` をかけない
 - グローバル指示は、現在の内容を読んでから編集する
 - 対象 repo に未コミット変更がある場合は保持し、報告する
