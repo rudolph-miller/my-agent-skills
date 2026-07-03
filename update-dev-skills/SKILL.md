@@ -38,7 +38,7 @@ master（真実の情報源）は `~/projects/my-agent-skills`。配備先は次
 
 - 実体配備: `~/.agents/skills`（Codexのユーザースキル正規探索パス）
 - symlinkのみ: `~/.codex/skills`（非推奨・後方互換パス）と `~/.claude/skills` は、`~/.agents/skills` へのsymlinkを維持する
-- ミラー: `~/projects/ichi.social/ichi-social-frontend/.claude/skills` / `.agents/skills`
+- ミラー: `~/projects/ichi.social/ichi-social-frontend/.agents/skills`（`.claude/skills` は2026-07-03に廃止済み）
 
 同期対象:
 
@@ -60,13 +60,13 @@ master から各 skill ディレクトリ単位で同期する。`skills/` root 
 
 ## 旧 Claude Code 由来の参照元
 
-旧 Claude Code dev 系スキルは `_archive/` に退避されている場合がある。
+旧 Claude Code dev 系スキルは次に退避されている。
 
 ```text
 ~/projects/my-agent-skills/_archive/
-~/projects/ichi.social/ichi-social-frontend/.claude/skills/_archive/
-~/projects/ichi.social/ichi-social-frontend/.agents/skills/_archive/
 ```
+
+ichi-social-frontend 側の `_archive/` は2026-07-03に削除済み（git履歴で参照可能）。
 
 これらは参照専用。ユーザーが明示しない限り、旧 multi-skill の Claude + Codex フローを復活させない。
 
@@ -106,7 +106,7 @@ python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/project
 
 5. **配備とミラー同期**
    - master の `dev/` / `update-dev-skills/` を `~/.agents/skills/` へ配備する
-   - 同じ内容を ichi-social-frontend の `.claude/skills` / `.agents/skills` へ同期する
+   - 同じ内容を ichi-social-frontend の `.agents/skills` へ同期する
    - `rsync --delete` を使う場合は、必ず skill ディレクトリ単位に限定する
    - `~/.codex/skills` と `~/.claude/skills` の該当エントリが `~/.agents/skills` へのsymlinkのままであることを確認する（実体化していたら是正する）
    - 同期後に `~/.agents/skills` と `ichi-social-frontend` の差分を確認する
