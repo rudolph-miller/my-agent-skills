@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Dev Skills"
+  short_description: "devフローとglobal policyを整合させて安全に更新・配備"
+  default_prompt: "Use $update-dev-skills to update the Codex dev workflow and publish it consistently."

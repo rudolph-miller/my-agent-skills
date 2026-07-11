@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dev"
+  short_description: "調査から実装・検証・PR作成まで進めるCodex開発フロー"
+  default_prompt: "Use $dev to inspect, implement, verify, and publish this software change safely."
