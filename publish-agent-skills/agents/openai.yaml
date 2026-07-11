@@ -1,0 +1,6 @@
+interface:
+  display_name: "Publish Agent Skills"
+  short_description: "コミット済みskillをactiveとmirrorへ安全に配備・照合"
+  default_prompt: "Use $publish-agent-skills to publish committed skills to active and mirror targets safely."
+policy:
+  allow_implicit_invocation: false

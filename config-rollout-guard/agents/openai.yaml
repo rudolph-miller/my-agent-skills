@@ -1,0 +1,4 @@
+interface:
+  display_name: "Config Rollout Guard"
+  short_description: "必須設定とsecretの反映順・起動確認・rollbackを検証"
+  default_prompt: "Use $config-rollout-guard to verify required config, secret rollout, startup readback, and rollback."
