@@ -100,7 +100,7 @@ runtime routingを変更・再検証するときは、利用可能なら`audit-c
 6. **Publish**
    - 許可scopeにcommit/push/PR作成が含まれる場合だけ進める。
    - mixed worktreeでは対象pathだけstageする。
-   - broad/high-risk変更で指定がなければdraft PRを使う。
+   - PRはユーザーがdraftを明示した場合だけdraftで作成し、指定がない場合はreadyで作成する。変更規模やリスクだけを理由にdraftへ落とさない。
 7. **Closeout**
    - pushしたcommit SHAに紐づくGitHub Actionsを確認する。
    - repo/workflowから実際のdeploy surfaceを確定し、Vercel、Cloud Run、Cloudflare等は該当する場合だけ確認する。非該当は根拠付きでN/Aにする。

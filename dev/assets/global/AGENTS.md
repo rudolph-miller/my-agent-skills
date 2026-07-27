@@ -21,6 +21,7 @@
 - `実装して`、`修正して`は、依頼scopeのlocal編集と検証を許可する。
 - `すすめて`、`すべてすすめて`、`PR作成まで`は、宣言済みscopeの実装・検証・必要なcommit/push/PR作成までを許可する。
 - `すすめて`、`すべて対応する`、`PR作成まですすめて`を、GitHub PR merge、deploy、本番変更の承認として扱わない。明示指示がなければPRがgreenになった時点で止める。
+- PRはユーザーがdraftを明示した場合だけdraftで作成し、指定がない場合はreadyで作成する。
 - devの`Integrate`はローカル差分統合であり、GitHub PR mergeを意味しない。
 - 破壊的git操作、本番データ変更、deploy、外部送信、ambiguous cleanupは別の明示承認を必要とする。
 
