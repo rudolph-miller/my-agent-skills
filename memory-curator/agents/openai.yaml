@@ -1,0 +1,4 @@
+interface:
+  display_name: "Memory Curator"
+  short_description: "Codexメモリーを重複・陳腐化・恒久知識に分類して整理提案"
+  default_prompt: "Use $memory-curator to audit Codex memories and propose safe consolidation."

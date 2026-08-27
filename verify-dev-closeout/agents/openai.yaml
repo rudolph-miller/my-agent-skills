@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Dev Closeout"
+  short_description: "CI/CDと実配備surfaceを検出しcloseout証跡を確認"
+  default_prompt: "Use $verify-dev-closeout to detect delivery surfaces and verify CI/CD and deployment evidence."

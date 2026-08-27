@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit Codex Runtime"
+  short_description: "Codex実行時のmodel・effort・agent roleを証跡付きで監査"
+  default_prompt: "Use $audit-codex-runtime to compare Codex configuration with observed runtime session metadata."
