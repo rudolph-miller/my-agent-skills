@@ -11,7 +11,7 @@
 | `agent-browser-google-auth` | localhostのGoogleログイン状態を保存・復元してブラウザテストを行う。 | `agent-browser-google-auth/` |
 | `audit-codex-runtime` | Codexのmodel・effort・agent roleをruntime証拠で監査する。 | `audit-codex-runtime/` |
 | `config-rollout-guard` | required configとsecretの反映順、起動確認、rollbackを検証する。 | `config-rollout-guard/` |
-| `dev` | 調査、実装、worktree統合、検証、PR作成を最小工程で進めるCodex開発フロー。 | `dev/` |
+| `dev` | 調査、実装、安全な外部worktree、統合、検証、PR作成を最小工程で進めるCodex開発フロー。 | `dev/` |
 | `gh-cli` | GitHub CLI（`gh`）の安全運用ガイド。破壊的操作は行わない。 | `gh-cli/` |
 | `memory-curator` | Codex Memoryを重複・snapshot・不変知識に分類して整理提案する。 | `memory-curator/` |
 | `publish-agent-skills` | committed SHAからskillをactiveとmirrorへ安全に配備・照合する。 | `publish-agent-skills/` |
