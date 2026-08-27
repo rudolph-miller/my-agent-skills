@@ -108,9 +108,9 @@ runtime routingを変更・再検証するときは、利用可能なら`audit-c
 
 ## worktree方針
 
-runtimeが管理するisolated worktreeを優先する。明示的に作る場合はrepo-localまたは作業用外部pathを使い、場所を報告する。
+runtimeが管理するisolated worktreeを優先する。明示的に作る場合は、`~/.codex/worktrees/<task-slug>/<repo-or-group>`のようなproject集合外のCodex管理pathを使い、場所を報告する。
 
-repo-localの`.codex/worktrees/**`を使う前に、ESLint、TypeScript、test runner、build tool、file watcherがその配下を走査しないか確認する。`.git/info/exclude`だけではlint/build除外にならない。
+`~/projects/tenet/<repo>-<task>`のようなrepo集合直下、repo内の`.codex/worktrees/**`、集合直下の`.codex-worktrees/**`には作らない。既存projectとworktreeを名前で推測させず、lint/build/file watcherの走査対象にも混ぜない。
 
 `git reset --hard`、未確認のworktree削除、ユーザー差分の破棄を行わない。cleanupはcandidate、判定根拠、real diff、削除後の残差を確認する。
 
