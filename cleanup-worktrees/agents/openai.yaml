@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cleanup Worktrees"
+  short_description: "Safely inspect and clean up inactive Git worktrees"
+  default_prompt: "Use $cleanup-worktrees to inspect and clean up the authorized inactive Git worktrees."

@@ -1,0 +1,14 @@
+[
+  {
+    "before": "- Vercel は `.vercel/project.json` や workflow 定義の有無に関係なく、毎回 Vercel コマンドで最新 deployment 状態を確認する",
+    "after": "- repo、workflow、remote integration、既知project metadataから実際のdeploy surfaceを確定し、Vercel等は該当する場合だけ対象SHAで確認する。local marker未検出だけでN/Aとせず、非該当は根拠を示す"
+  },
+  {
+    "before": "- GitHub Actions か Vercel のどちらかが失敗していれば、その場で修正して再実行し、成功を確認する",
+    "after": "- CI/CDや該当deploy surfaceの失敗は今回のdiffとの因果を確認する。今回起因なら承認scope内で修正・再検証し、無関係ならscope外として証拠を示す"
+  },
+  {
+    "before": "- 指示がなくてもCIの失敗を直す",
+    "after": "- CIの失敗は今回のdiffとの因果を確認し、今回起因の修正を承認scope内で行う。無関係な失敗は証拠付きで報告する"
+  }
+]
