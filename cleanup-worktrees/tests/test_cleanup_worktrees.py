@@ -322,6 +322,18 @@ class CleanupTests(unittest.TestCase):
         self.assertEqual((self.repo / "code").read_text(), "baseline\n")
         self.assertTrue(output.is_symlink())
 
+    def test_output_through_candidate_parent_symlink_is_rejected(self):
+        outside = self.root / "outside-reports"
+        outside.mkdir()
+        (self.work / ".serena").symlink_to(outside, target_is_directory=True)
+        manifest = self.inspect()
+        manifest_path = self.root / "manifest.json"
+        manifest_path.write_text(json.dumps(manifest))
+        result = subprocess.run(["python3", str(Path(cleanup.__file__)), "apply", "--policy", str(self.policy_path), "--activity", str(self.activity_path), "--manifest", str(manifest_path), "--candidate", self.candidate(manifest)["id"], "--journal", str(self.journal), "--output", str(self.work / ".serena/result.json"), "--allow-delete"], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.work.exists())
+        self.assertFalse((outside / "result.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

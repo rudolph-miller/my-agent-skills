@@ -321,9 +321,10 @@ def apply(manifest, policy_path, activity_path, reviews, selected, journal, allo
     candidates = {item["id"]: item for item in manifest["candidates"]}
     if not set(selected) <= candidates.keys():
         raise Unsafe("candidate was not inspected")
+    control_paths = (journal, policy_path, activity_path)
     journal = Path(journal).resolve()
     for item in manifest["candidates"]:
-        if any(inside(Path(value).resolve(), Path(item["realpath"])) for value in (journal, policy_path, activity_path)):
+        if any(inside(form, Path(item["realpath"])) for value in control_paths for form in (Path(value).absolute(), Path(value).resolve())):
             raise Unsafe("journal and control files must be outside every candidate")
     journal.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     history = [row for row in journal_read(journal) if row["run_id"] == manifest["run_id"]]
@@ -408,14 +409,15 @@ def main():
             print(json.dumps(discover(args.repo, args.root), ensure_ascii=True, indent=2))
             return
         reviews = json.loads(Path(args.reviews).read_text()) if args.reviews else {}
-        output = Path(args.output)
+        output = Path(args.output).absolute()
+        output_real = output.resolve()
         if args.command == "apply":
             manifest = json.loads(Path(args.manifest).read_text())
             if output.resolve() == Path(args.journal).resolve():
                 raise Unsafe("result and journal must use different paths")
             for item in manifest["candidates"]:
                 for value in (args.manifest, args.output, args.reviews):
-                    if value and inside(Path(value).resolve(), Path(item["realpath"])):
+                    if value and any(inside(form, Path(item["realpath"])) for form in (Path(value).absolute(), Path(value).resolve())):
                         raise Unsafe("manifest, review and result files must be outside every candidate")
         output.parent.mkdir(parents=True, exist_ok=True)
         # Reserve a new report before apply; never follow or overwrite an existing output.
@@ -427,8 +429,10 @@ def main():
             handle.write(json.dumps(result, ensure_ascii=True, indent=2) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
+        if json.loads(output_real.read_text()) != result:
+            raise Unsafe("result file readback failed")
         unresolved = len(result.get("errors", [])) + sum(row["status"] in ("retained_or_unknown", "absent_operation_unknown") for row in result.get("outcomes", []))
-        print(json.dumps({"output": str(output.resolve()), "run_id": result["run_id"], "errors": unresolved, "removed_count": result.get("removed_count")}))
+        print(json.dumps({"output": str(output_real), "run_id": result["run_id"], "errors": unresolved, "removed_count": result.get("removed_count")}))
         if unresolved:
             raise SystemExit(2)
     except (Unsafe, OSError, ValueError, subprocess.TimeoutExpired) as error:
