@@ -24,6 +24,7 @@ masterは`~/projects/my-agent-skills`とする。
 ~/projects/my-agent-skills/update-dev-skills/SKILL.md
 ~/projects/my-agent-skills/verify-dev-closeout/SKILL.md
 ~/projects/my-agent-skills/config-rollout-guard/SKILL.md
+~/projects/my-agent-skills/cleanup-worktrees/SKILL.md
 ~/.codex/AGENTS.md
 ~/.claude/CLAUDE.md
 ~/.codex/agents/worker.toml
@@ -39,7 +40,7 @@ masterは`~/projects/my-agent-skills`とする。
 
 activeやmirrorをmasterとして編集しない。
 
-global指示は既存の管理元を優先する。CLAUDE.mdの管理元がない場合は、既存の関係ない指示を保持し、公開可能な内容か確認したうえで`dev/assets/global/CLAUDE.md`へ管理する。秘密値・個人情報をsourceへ取り込まない。
+global指示は既存の管理元を優先する。CLAUDE.mdの管理元がない場合は、全文を公開sourceへコピーせず、今回管理する行だけを`dev/assets/global/claude-policy-lines.json`で管理する。既存の関係ない指示を保持し、秘密値・個人情報をsourceへ取り込まない。
 
 ## 変更を分類する
 
@@ -59,6 +60,7 @@ AGENTSは不変ルールへ絞り、devの工程を再掲しない。Noteは現�
 - 各repoの`git status --short`と`git worktree list --porcelain`を確認する。
 - mixed dirtyならcleanなfeature worktreeを作り、既存差分を触らない。
 - 変更対象と依存helper、関連global指示、mirror、実consumerのcheckout/skill実体を列挙する。旧mirrorの存在だけで個別不具合の原因と断定しない。
+- dev関連一式の更新では`dev`、`update-dev-skills`、`publish-agent-skills`、`audit-codex-runtime`、`verify-dev-closeout`、`config-rollout-guard`と、devが参照する`cleanup-worktrees`を配備単位として確認する。他の無関係なskillは変更しない。
 - global指示とdev/helperの矛盾を確認する。provider確認は実deploy surfaceに基づき、failure対応は今回diffとの因果に限定する。
 - runtime routing変更では、過去の静的configではなく現在のtool schemaとsession metadataを確認する。
 
@@ -105,7 +107,8 @@ Worker assetがある場合はTOML parseを確認する。model routingを変更
 - skill directory単位で、まずactiveへ同期する。
 - skills root全体へ`rsync --delete`しない。
 - Workerが今回対象なら、assetはsource commitのfileからactive定義へ配備する。
-- global指示が今回対象なら、source commitの`dev/assets/global/AGENTS.md`や管理済みの`dev/assets/global/CLAUDE.md`から対応するactive fileへ配備する。working tree外のdraftを直接使わない。
+- global AGENTSが今回対象なら、source commitの`dev/assets/global/AGENTS.md`から配備する。working tree外のdraftを直接使わない。
+- Claudeの管理行は`scripts/align_claude_policy.py --source-root <source-worktree> --commit <sha> --target ~/.claude/CLAUDE.md`でdry-runし、配備承認済みなら`--apply --backup-dir <走査外backup先>`を追加する。全対象行が旧文面または新文面に一意に一致する場合だけ反映し、その他の内容を保持する。未知・重複は現物を確認し、全文の上書きで解消しない。
 - `.codex/skills/<skill>`と`.claude/skills/<skill>`の対象entryがactive実体へのsymlinkであることを確認する。`.codex/skills/.system`等を含むroot directory自体は変更しない。
 - activeでvalidatorと必要なruntime smokeを再実行する。
 
@@ -123,7 +126,7 @@ active validationまたはruntime smokeが失敗したら、このreleaseで変�
 ### 8. Verify publish
 
 - source、active、mirrorの対象directoryを比較する。
-- 今回変更したWorker assetとactive TOML、global指示assetと対応するactive fileを比較する。
+- 今回変更したWorker assetとactive TOML、global AGENTS assetとactive fileを比較する。Claudeの管理行は同じcommitで再dry-runし`identical`を確認する。全文hashは今回のbefore/after照合用とし、私的な全文をsourceへ保存しない。
 - consumerごとに実体path、symlink解決先、対象fileのhashとcheckoutを確認する。配備先だけでなく、実際に使用するproject内の同名コピーも照合する。
 - 更新後の新しいtaskまたは隔離smokeで、意図した版の読込を確認する。routingを変更していなければmodel/effortの再設定はしない。
 - pushした各commit SHAのGitHub Actionsを確認する。

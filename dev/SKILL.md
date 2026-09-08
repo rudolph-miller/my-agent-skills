@@ -125,6 +125,8 @@ runtimeが管理するisolated worktreeを優先する。明示的に作る場�
 
 `git reset --hard`、未確認のworktree削除、ユーザー差分の破棄を行わない。cleanupはcandidate、判定根拠、real diff、削除後の残差を確認する。
 
+worktree cleanupを依頼された場合や既存automationで実行する場合は、`cleanup-worktrees`の共通scriptを使う。通常のdev完了時に削除を自動追加しない。完了直後の実行が明示設定されている場合も、現在のcwdを削除せず、作業終了後の独立した実行から同じ判定・再照合を行う。
+
 ## checkpointと引き継ぎ
 
 compaction、material scope変更、owner変更、長時間化が起きたらbriefのTodoとNotesを更新する。Notesには次を短く残す。direct-fixでは会話内で足りる。
