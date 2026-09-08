@@ -47,7 +47,7 @@ description: required config、環境変数、secret、feature flag、schema-bac
 - deployを実施した場合のcurrent trafficとerror確認
 - rollback条件
 
-deploy未承認の場合は、`code ready / production rollout pending`として明確に分ける。
+本番反映が依頼scopeに含まれ、deployが未承認の場合は、`code ready / production rollout pending`として明確に分ける。localだけの依頼に本番反映の残作業を追加しない。
 
 ## report
 
