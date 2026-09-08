@@ -2,6 +2,8 @@
 
 設定はその回の依頼・既存automationから作り、走査外へ保存する。絶対pathを使う。sourceには個人の候補一覧、private差分、認証情報を保存しない。
 
+各`--output`は新しいfile名を使う。既存file/symlinkを上書きせず、apply前にreport先を確保する。journalは専用の別pathで追記を継続する。
+
 ## policy.json
 
 ```json
@@ -24,6 +26,7 @@
 - metadata例外はliteral pathとその配下。wildcardや部分一致ではない。例をそのまま新しい依頼の削除許可として採用しない。
 - `activity_ignore_components`はmtime探索だけの除外。`disposable_ignored_components`はその依頼で破棄可能と確認した生成物だけに使う。ignoredな設定や秘密fileを一括して破棄可能にしない。指定済み生成物の内容はfingerprintに含めず、その存在と通常ファイルの差分・mtimeを確認する。
 - キーワードはbranchと変更pathの区切りに一致させる。`src`を`rc`として保護しない。統合証拠のない候補の分類にだけ使う。
+- indexのassume-unchanged/skip-worktreeで隠れた差分も実fileと照合する。正当なsparse省略は[Gitのcheck-rules](https://git-scm.com/docs/git-sparse-checkout)で区別し、確認不能なGit版・設定ではunknownとして残す。
 
 ## activity.json
 

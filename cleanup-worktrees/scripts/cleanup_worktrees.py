@@ -17,15 +17,15 @@ class Unsafe(RuntimeError):
     pass
 
 
-def run(argv, cwd=None, codes=(0,)):
-    result = subprocess.run(argv, cwd=cwd, env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"}, capture_output=True, timeout=120)
+def run(argv, cwd=None, codes=(0,), input_data=None):
+    result = subprocess.run(argv, cwd=cwd, env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"}, capture_output=True, timeout=120, input=input_data)
     if result.returncode not in codes:
         raise Unsafe(f"{argv[0]} failed (exit {result.returncode}); result is unknown")
     return result
 
 
-def git(repo, *args, codes=(0,)):
-    return run(["git", "-C", str(repo), *args], codes=codes)
+def git(repo, *args, codes=(0,), input_data=None):
+    return run(["git", "-C", str(repo), *args], codes=codes, input_data=input_data)
 
 
 def sha(value):
@@ -131,10 +131,15 @@ def changes(path):
     flagged = []
     for record in git(path, "ls-files", "-v", "-z").stdout.split(b"\0"):
         if record and (chr(record[0]).islower() or record[:1] == b"S"):
-            flagged.append(os.fsdecode(record[2:]))
+            flagged.append((os.fsdecode(record[2:]), chr(record[0])))
+    omitted = set()
+    skipped_missing = [name for name, tag in flagged if tag.upper() == "S" and not os.path.lexists(Path(path) / name)]
+    if skipped_missing and git(path, "config", "--bool", "core.sparseCheckout", codes=(0, 1)).stdout.strip() == b"true":
+        included = git(path, "sparse-checkout", "check-rules", "-z", input_data=b"\0".join(os.fsencode(name) for name in skipped_missing) + b"\0").stdout
+        omitted = set(skipped_missing) - {os.fsdecode(name) for name in included.split(b"\0") if name}
     known = {item["path"] for item in result}
-    for name in flagged:
-        if name in known:
+    for name, _ in flagged:
+        if name in known or name in omitted:
             continue
         entries = [entry for entry in git(path, "ls-files", "--stage", "-z", "--", name).stdout.split(b"\0") if entry]
         if len(entries) != 1:
@@ -403,18 +408,25 @@ def main():
             print(json.dumps(discover(args.repo, args.root), ensure_ascii=True, indent=2))
             return
         reviews = json.loads(Path(args.reviews).read_text()) if args.reviews else {}
-        if args.command == "inspect":
-            result = inspect(policy_from(args.policy), activity_from(args.activity), reviews)
-        else:
+        output = Path(args.output)
+        if args.command == "apply":
             manifest = json.loads(Path(args.manifest).read_text())
+            if output.resolve() == Path(args.journal).resolve():
+                raise Unsafe("result and journal must use different paths")
             for item in manifest["candidates"]:
                 for value in (args.manifest, args.output, args.reviews):
                     if value and inside(Path(value).resolve(), Path(item["realpath"])):
                         raise Unsafe("manifest, review and result files must be outside every candidate")
-            result = apply(manifest, args.policy, args.activity, reviews, args.candidate, args.journal, args.allow_delete, args.resume)
-        output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(result, ensure_ascii=True, indent=2) + "\n")
+        # Reserve a new report before apply; never follow or overwrite an existing output.
+        with output.open("x", encoding="utf-8") as handle:
+            if args.command == "inspect":
+                result = inspect(policy_from(args.policy), activity_from(args.activity), reviews)
+            else:
+                result = apply(manifest, args.policy, args.activity, reviews, args.candidate, args.journal, args.allow_delete, args.resume)
+            handle.write(json.dumps(result, ensure_ascii=True, indent=2) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
         unresolved = len(result.get("errors", [])) + sum(row["status"] in ("retained_or_unknown", "absent_operation_unknown") for row in result.get("outcomes", []))
         print(json.dumps({"output": str(output.resolve()), "run_id": result["run_id"], "errors": unresolved, "removed_count": result.get("removed_count")}))
         if unresolved:

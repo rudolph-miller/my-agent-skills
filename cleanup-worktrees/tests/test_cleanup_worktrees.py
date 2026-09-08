@@ -300,6 +300,28 @@ class CleanupTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertEqual(json.loads(result.stdout)["errors"], 1)
 
+    def test_normal_sparse_omission_is_not_a_local_deletion(self):
+        for folder in ["included", "excluded"]:
+            (self.work / folder).mkdir()
+            (self.work / folder / "file").write_text(folder)
+        self.git("add", ".", repo=self.work)
+        self.git("commit", "-m", "sparse fixture", repo=self.work)
+        self.git("merge", "--ff-only", "feature")
+        self.git("sparse-checkout", "set", "included", repo=self.work)
+        self.assertFalse((self.work / "excluded/file").exists())
+        self.assertEqual(self.candidate()["decision"], "eligible")
+        self.git("update-index", "--skip-worktree", "included/file", repo=self.work)
+        (self.work / "included/file").unlink()
+        self.assertEqual(self.candidate()["decision"], "review_required")
+
+    def test_existing_output_symlink_cannot_overwrite_user_file(self):
+        output = self.root / "output.json"
+        output.symlink_to(self.repo / "code")
+        result = subprocess.run(["python3", str(Path(cleanup.__file__)), "inspect", "--policy", str(self.policy_path), "--activity", str(self.activity_path), "--output", str(output)], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.repo / "code").read_text(), "baseline\n")
+        self.assertTrue(output.is_symlink())
+
 
 if __name__ == "__main__":
     unittest.main()
